@@ -7,11 +7,14 @@ export const COLORS = {
   secondary: '#E8E1D9',
 
   // Cassette body colors
-  cassetteBody: '#3A2E2A',
-  cassetteWindow: '#EDE8E0',
-  cassetteReel: '#F28C28',
-  cassetteHub: '#3A2E2A',
-  cassetteTape: '#8C7B6E',
+  cassetteBody: '#2A2018',
+  cassetteWindow: '#151008',   // dark smoked window
+  cassetteReel: '#706860',     // metallic warm gray
+  cassetteReelRing: '#9A9088', // reel outer ring highlight
+  cassetteHub: '#1A1410',
+  cassetteTape: '#7A6858',
+  cassetteLabel: '#E8DDD0',    // cream label sticker
+  cassetteLabelLine: '#C8BDB0',
 } as const;
 
 // ─── Typography ───────────────────────────────────────────────────────────────

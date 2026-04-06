@@ -1,10 +1,8 @@
 import React, { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
-import { COLORS, FONT, SPACING, RADIUS, SHADOW, ANIM } from '../constants/theme';
+import { COLORS, FONT, SPACING, ANIM } from '../constants/theme';
 
 // ─── PressableButton ──────────────────────────────────────────────────────────
-//
-// Base button with press-scale animation (design.md: 0.92).
 
 type PressableButtonProps = {
   onPress?: () => void;
@@ -12,28 +10,17 @@ type PressableButtonProps = {
   disabled?: boolean;
   children: React.ReactNode;
   style?: object;
-  wide?: boolean;
 };
 
-function PressableButton({ onPress, onLongPress, disabled, children, style, wide }: PressableButtonProps) {
+function PressableButton({ onPress, onLongPress, disabled, children, style }: PressableButtonProps) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
     if (disabled) return;
-    Animated.timing(scale, {
-      toValue: ANIM.pressScale,
-      duration: ANIM.pressDurationMs,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(scale, { toValue: ANIM.pressScale, duration: ANIM.pressDurationMs, useNativeDriver: true }).start();
   };
-
   const handlePressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      damping: 15,
-      stiffness: 200,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(scale, { toValue: 1, damping: 15, stiffness: 200, useNativeDriver: true }).start();
   };
 
   return (
@@ -44,15 +31,7 @@ function PressableButton({ onPress, onLongPress, disabled, children, style, wide
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
-      <Animated.View
-        style={[
-          styles.button,
-          wide && styles.buttonWide,
-          disabled && styles.buttonDisabled,
-          style,
-          { transform: [{ scale }] },
-        ]}
-      >
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
         {children}
       </Animated.View>
     </Pressable>
@@ -61,15 +40,8 @@ function PressableButton({ onPress, onLongPress, disabled, children, style, wide
 
 // ─── PlayerControls ───────────────────────────────────────────────────────────
 //
-// Layout:
-//   [ ◀◀ ]   [ ▶ / ‖ ]   [ ▶▶ ]    ← main controls
-//
-//          [ FLIP  ↺ ]              ← flip button (separate, below)
-//
-// Spec rules enforced:
-//   - No interaction during noise: all main controls disabled
-//   - Skip requires long press: REW and FF only respond to onLongPress
-//   - Flip must be manual: always available
+// Pill-shaped control bar: [|◀◀]  [▶ orange]  [▶▶|]
+// REW and FF require long press (spec).
 
 type Props = {
   isPlaying: boolean;
@@ -77,70 +49,35 @@ type Props = {
   isSideEnded: boolean;
   onPlay: () => void;
   onPause: () => void;
-  onFlip: () => void;
   onSeekNext: () => void;
   onSeekPrev: () => void;
 };
 
-export function PlayerControls({
-  isPlaying,
-  isInteractionBlocked,
-  isSideEnded,
-  onPlay,
-  onPause,
-  onFlip,
-  onSeekNext,
-  onSeekPrev,
-}: Props) {
+export function PlayerControls({ isPlaying, isInteractionBlocked, isSideEnded, onPlay, onPause, onSeekNext, onSeekPrev }: Props) {
   const mainDisabled = isInteractionBlocked || isSideEnded;
 
   return (
-    <View style={styles.container}>
-      {/* ── Noise indicator ─────────────────────────────────────────────── */}
-      {isInteractionBlocked && (
-        <View style={styles.noiseBar}>
-          <Text style={styles.noiseText}>· · ·</Text>
-        </View>
-      )}
+    <View style={[styles.bar, mainDisabled && styles.barDisabled]}>
+      {/* REW — long press only */}
+      <PressableButton onLongPress={onSeekPrev} disabled={mainDisabled} style={styles.sideBtn}>
+        <Text style={[styles.sideBtnText, mainDisabled && styles.textDisabled]}>{'|◀◀'}</Text>
+      </PressableButton>
 
-      {/* ── Side ended prompt ────────────────────────────────────────────── */}
-      {isSideEnded && !isInteractionBlocked && (
-        <View style={styles.noiseBar}>
-          <Text style={styles.noiseText}>flip tape to continue</Text>
-        </View>
-      )}
+      {/* PLAY / PAUSE */}
+      <PressableButton
+        onPress={isPlaying ? onPause : onPlay}
+        disabled={mainDisabled}
+        style={[styles.playBtn, mainDisabled && styles.playBtnDisabled]}
+      >
+        <Text style={[styles.playBtnText, mainDisabled && styles.textDisabled]}>
+          {isPlaying ? '⏸' : '▶'}
+        </Text>
+      </PressableButton>
 
-      {/* ── Main controls: REW / PLAY·PAUSE / FF ─────────────────────────── */}
-      <View style={styles.mainRow}>
-
-        {/* REW — long press only */}
-        <PressableButton onLongPress={onSeekPrev} disabled={mainDisabled}>
-          <Text style={[styles.buttonLabel, mainDisabled && styles.labelDisabled]}>◀◀</Text>
-        </PressableButton>
-
-        {/* PLAY / PAUSE */}
-        <PressableButton
-          onPress={isPlaying ? onPause : onPlay}
-          disabled={mainDisabled}
-          style={styles.playButton}
-        >
-          <Text style={[styles.playLabel, mainDisabled && styles.labelDisabled]}>
-            {isPlaying ? '‖' : '▶'}
-          </Text>
-        </PressableButton>
-
-        {/* FF — long press only */}
-        <PressableButton onLongPress={onSeekNext} disabled={mainDisabled}>
-          <Text style={[styles.buttonLabel, mainDisabled && styles.labelDisabled]}>▶▶</Text>
-        </PressableButton>
-      </View>
-
-      {/* ── Flip button ──────────────────────────────────────────────────── */}
-      <View style={styles.flipRow}>
-        <PressableButton onPress={onFlip} wide>
-          <Text style={styles.flipLabel}>↺  FLIP</Text>
-        </PressableButton>
-      </View>
+      {/* FF — long press only */}
+      <PressableButton onLongPress={onSeekNext} disabled={mainDisabled} style={styles.sideBtn}>
+        <Text style={[styles.sideBtnText, mainDisabled && styles.textDisabled]}>{'▶▶|'}</Text>
+      </PressableButton>
     </View>
   );
 }
@@ -148,73 +85,58 @@ export function PlayerControls({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-
-  noiseBar: {
-    height: 20,
-    justifyContent: 'center',
-  },
-  noiseText: {
-    color: COLORS.text,
-    fontSize: FONT.sizeSm,
-    opacity: 0.45,
-    letterSpacing: 2,
-  },
-
-  mainRow: {
+  bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.lg,
+    justifyContent: 'space-between',
+    backgroundColor: '#EDE5D8',
+    borderRadius: 50,
+    paddingVertical: 10,
+    paddingHorizontal: SPACING.lg,
+    shadowColor: '#5A4A3A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+    width: '100%',
+  },
+  barDisabled: {
+    opacity: 0.5,
   },
 
-  button: {
-    width: 54,
-    height: 54,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.secondary,
+  sideBtn: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 8,
+  },
+  sideBtnText: {
+    fontSize: FONT.sizeSm,
+    fontWeight: FONT.weightBold,
+    color: COLORS.text,
+    letterSpacing: 1,
+  },
+
+  playBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.button,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  buttonWide: {
-    width: 'auto' as const,
-    paddingHorizontal: SPACING.xl,
+  playBtnDisabled: {
+    backgroundColor: '#C8B8A0',
+    shadowOpacity: 0,
   },
-  buttonDisabled: {
-    opacity: 0.35,
-  },
-
-  playButton: {
-    width: 68,
-    height: 68,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.primary,
-  },
-
-  buttonLabel: {
-    fontSize: FONT.sizeMd,
-    color: COLORS.text,
-    fontWeight: FONT.weightMedium,
-  },
-  playLabel: {
-    fontSize: FONT.sizeLg,
+  playBtnText: {
+    fontSize: 22,
     color: '#fff',
-    fontWeight: FONT.weightBold,
-  },
-  labelDisabled: {
-    opacity: 0.4,
+    marginLeft: 2,
   },
 
-  flipRow: {
-    marginTop: SPACING.lg,
-  },
-  flipLabel: {
-    fontSize: FONT.sizeSm,
-    color: COLORS.text,
-    fontWeight: FONT.weightMedium,
-    letterSpacing: 1.5,
-  },
+  textDisabled: { opacity: 0.5 },
 });
