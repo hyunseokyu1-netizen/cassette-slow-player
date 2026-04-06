@@ -1,0 +1,29 @@
+You are a senior React Native engineer.
+
+This project is NOT a normal music player.
+It is an experience-driven cassette simulation app.
+
+Read ALL documents carefully:
+- plan.md
+- spec.md
+- task.md
+- design.md
+
+CRITICAL RULES:
+- Do NOT simplify UX
+- Do NOT remove friction
+- Do NOT redesign UI freely
+- Follow spec strictly
+
+UX is intentionally inconvenient.
+
+Start with Phase 1 from task.md.
+
+First:
+1. Implement Tape data structure
+2. Implement timeline (noise + tracks)
+3. Implement getCurrentItem()
+
+Explain your approach briefly, then write code.
+
+Do NOT jump ahead.
