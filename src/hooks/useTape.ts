@@ -52,7 +52,7 @@ export function useTape(initialTape?: Tape) {
         : track;
 
       const newTracks = [...side.tracks, trackToAdd];
-      const newTimeline = buildTimeline(sideLabel, newTracks, tape.noiseGap);
+      const newTimeline = buildTimeline(sideLabel, newTracks, tape.noiseGap, side.noiseDurations);
 
       setTape((prev) => ({
         ...prev,
@@ -71,7 +71,7 @@ export function useTape(initialTape?: Tape) {
       setTape((prev) => {
         const side = prev[sideLabel];
         const newTracks = side.tracks.filter((t) => t.id !== trackId);
-        const newTimeline = buildTimeline(sideLabel, newTracks, prev.noiseGap);
+        const newTimeline = buildTimeline(sideLabel, newTracks, prev.noiseGap, side.noiseDurations);
         return {
           ...prev,
           [sideLabel]: { ...side, tracks: newTracks, timeline: newTimeline },
@@ -90,7 +90,7 @@ export function useTape(initialTape?: Tape) {
     (sideLabel: 'A' | 'B', newOrder: Track[]): void => {
       setTape((prev) => {
         const side = prev[sideLabel];
-        const newTimeline = buildTimeline(sideLabel, newOrder, prev.noiseGap);
+        const newTimeline = buildTimeline(sideLabel, newOrder, prev.noiseGap, side.noiseDurations);
         return {
           ...prev,
           [sideLabel]: { ...side, tracks: newOrder, timeline: newTimeline },
@@ -111,14 +111,38 @@ export function useTape(initialTape?: Tape) {
       noiseGap: clamped,
       A: {
         ...prev.A,
-        timeline: buildTimeline('A', prev.A.tracks, clamped),
+        timeline: buildTimeline('A', prev.A.tracks, clamped, prev.A.noiseDurations),
       },
       B: {
         ...prev.B,
-        timeline: buildTimeline('B', prev.B.tracks, clamped),
+        timeline: buildTimeline('B', prev.B.tracks, clamped, prev.B.noiseDurations),
       },
     }));
   }, []);
+
+  // ── updateNoiseDuration ──────────────────────────────────────────────────
+  //
+  // Updates the duration of one noise item on a side.
+  // noiseIndex:
+  //   Side A: 0 = initial, 1 = gap after track[0], etc.
+  //   Side B: 0 = gap after track[0], etc.
+
+  const updateNoiseDuration = useCallback(
+    (sideLabel: 'A' | 'B', noiseIndex: number, duration: number): void => {
+      const clamped = Math.max(NOISE_GAP_MIN, Math.min(NOISE_GAP_MAX, duration));
+      setTape((prev) => {
+        const side = prev[sideLabel];
+        const existing = side.noiseDurations ? [...side.noiseDurations] : [];
+        existing[noiseIndex] = clamped;
+        const newTimeline = buildTimeline(sideLabel, side.tracks, prev.noiseGap, existing);
+        return {
+          ...prev,
+          [sideLabel]: { ...side, noiseDurations: existing, timeline: newTimeline },
+        };
+      });
+    },
+    [],
+  );
 
   // ── getRemainingTimeForSide ──────────────────────────────────────────────
 
@@ -134,6 +158,7 @@ export function useTape(initialTape?: Tape) {
     removeTrack,
     reorderTracks,
     setNoiseGap,
+    updateNoiseDuration,
     getRemainingTimeForSide,
   };
 }

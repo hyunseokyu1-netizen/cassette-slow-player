@@ -3,8 +3,12 @@
 export const COLORS = {
   background: '#F5F1EA',
   primary: '#F28C28',
+  primaryDark: '#E57A1F',
   text: '#3A2E2A',
+  textSecondary: '#6B5B53',
   secondary: '#E8E1D9',
+  progressTrack: '#DBC098',
+  card: '#F0EAE0',
 
   // Cassette body colors
   cassetteBody: '#2A2018',

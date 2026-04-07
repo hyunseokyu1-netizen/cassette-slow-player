@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, Animated, Easing, Pressable } from 'react-native';
+import { View, Text, SafeAreaView, StyleSheet, Animated, Easing, Pressable, Platform, StatusBar } from 'react-native';
 import { Cassette } from '../components/Cassette';
 import { PlayerControls } from '../components/PlayerControls';
 import { useCassetteEngine } from '../hooks/useCassetteEngine';
@@ -79,8 +79,10 @@ export function PlayerScreen({ tape }: Props) {
     ? `End of Side ${side}`
     : null;
 
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { paddingTop: statusBarHeight }]}>
       <View style={styles.screen}>
 
         {/* ── Tape header (outside card) ───────────────────────────────── */}

@@ -28,23 +28,32 @@ export function buildTimeline(
   sideLabel: 'A' | 'B',
   tracks: Track[],
   noiseGap: number,
+  noiseDurations?: number[],
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   let cursor = 0;
 
-  // Side A: initial 3s noise before anything else
+  // Side A: initial noise before anything else
+  // noiseDurations[0] overrides INITIAL_NOISE_DURATION for side A
   if (sideLabel === 'A') {
-    items.push({ type: 'noise', startTime: 0, duration: INITIAL_NOISE_DURATION });
-    cursor = INITIAL_NOISE_DURATION;
+    const initDur = noiseDurations?.[0] ?? INITIAL_NOISE_DURATION;
+    items.push({ type: 'noise', startTime: 0, duration: initDur });
+    cursor = initDur;
   }
 
   for (let i = 0; i < tracks.length; i++) {
     // Noise gap between consecutive tracks (not before the very first track)
-    if (i > 0 && noiseGap > 0) {
-      const gap = Math.min(noiseGap, SIDE_DURATION - cursor);
-      if (gap > 0) {
-        items.push({ type: 'noise', startTime: cursor, duration: gap });
-        cursor += gap;
+    if (i > 0) {
+      // Side A: noiseDurations[i] (index 0 = initial, so gap after track i-1 = index i)
+      // Side B: noiseDurations[i-1] (no initial noise, gap after track i-1 = index i-1)
+      const noiseIdx = sideLabel === 'A' ? i : i - 1;
+      const gapDur = noiseDurations?.[noiseIdx] ?? noiseGap;
+      if (gapDur > 0) {
+        const gap = Math.min(gapDur, SIDE_DURATION - cursor);
+        if (gap > 0) {
+          items.push({ type: 'noise', startTime: cursor, duration: gap });
+          cursor += gap;
+        }
       }
     }
 

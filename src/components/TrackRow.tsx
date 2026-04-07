@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Track } from '../types/tape';
-import { COLORS, FONT, SPACING, SHADOW } from '../constants/theme';
+import { COLORS, FONT, SPACING } from '../constants/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -13,10 +13,9 @@ function formatDuration(seconds: number): string {
 
 // ─── TrackRow ─────────────────────────────────────────────────────────────────
 //
-// ↑ / ↓ buttons replace drag-to-reorder.
-// First item hides ↑; last item hides ↓.
+// Number badge | title | duration | × delete
 
-export const TRACK_ROW_HEIGHT = 64;
+export const TRACK_ROW_HEIGHT = 60;
 
 type Props = {
   track: Track;
@@ -28,37 +27,28 @@ type Props = {
 };
 
 export function TrackRow({ track, index, totalCount, onMoveUp, onMoveDown, onDelete }: Props) {
+  const trackNum = String(index + 1).padStart(2, '0');
+
   return (
     <View style={styles.row}>
-      {/* ── Reorder buttons ──────────────────────────────────────────────── */}
-      <View style={styles.reorderCol}>
-        <Pressable
-          onPress={() => onMoveUp(index)}
-          style={[styles.reorderBtn, index === 0 && styles.hidden]}
-          hitSlop={8}
-        >
-          <Text style={styles.reorderIcon}>▲</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onMoveDown(index)}
-          style={[styles.reorderBtn, index === totalCount - 1 && styles.hidden]}
-          hitSlop={8}
-        >
-          <Text style={styles.reorderIcon}>▼</Text>
-        </Pressable>
+      {/* Number badge */}
+      <View style={styles.numBadge}>
+        <Text style={styles.numText}>{trackNum}</Text>
       </View>
 
-      {/* ── Track info ────────────────────────────────────────────────────── */}
+      {/* Track info */}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{track.title}</Text>
-        <Text style={styles.artist} numberOfLines={1}>{track.artist}</Text>
+        {track.artist ? (
+          <Text style={styles.artist} numberOfLines={1}>{track.artist}</Text>
+        ) : null}
       </View>
 
-      {/* ── Duration ──────────────────────────────────────────────────────── */}
+      {/* Duration */}
       <Text style={styles.duration}>{formatDuration(track.duration)}</Text>
 
-      {/* ── Delete ────────────────────────────────────────────────────────── */}
-      <Pressable onPress={() => onDelete(track.id)} style={styles.deleteButton} hitSlop={8}>
+      {/* Delete */}
+      <Pressable onPress={() => onDelete(track.id)} style={styles.deleteBtn} hitSlop={8}>
         <Text style={styles.deleteIcon}>✕</Text>
       </Pressable>
     </View>
@@ -72,34 +62,29 @@ const styles = StyleSheet.create({
     height: TRACK_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: SPACING.sm,
-    marginBottom: SPACING.xs,
-    ...SHADOW.button,
+    paddingHorizontal: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.secondary,
+    gap: SPACING.sm,
   },
 
-  reorderCol: {
+  numBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingHorizontal: SPACING.xs,
+    flexShrink: 0,
   },
-  reorderBtn: {
-    padding: 2,
-  },
-  reorderIcon: {
-    fontSize: 10,
-    color: COLORS.text,
-    opacity: 0.4,
-  },
-  hidden: {
-    opacity: 0,
+  numText: {
+    fontSize: FONT.sizeSm,
+    fontWeight: FONT.weightBold,
+    color: COLORS.textSecondary,
   },
 
   info: {
     flex: 1,
-    paddingLeft: SPACING.xs,
   },
   title: {
     fontSize: FONT.sizeMd,
@@ -107,26 +92,23 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   artist: {
-    fontSize: FONT.sizeSm,
-    color: COLORS.text,
-    opacity: 0.5,
-    marginTop: 2,
+    fontSize: FONT.sizeXs,
+    color: COLORS.textSecondary,
+    marginTop: 1,
   },
 
   duration: {
     fontSize: FONT.sizeSm,
-    color: COLORS.text,
-    opacity: 0.45,
-    marginRight: SPACING.sm,
+    color: COLORS.textSecondary,
     fontVariant: ['tabular-nums'],
   },
 
-  deleteButton: {
-    padding: SPACING.xs,
+  deleteBtn: {
+    paddingHorizontal: SPACING.xs,
   },
   deleteIcon: {
     fontSize: FONT.sizeSm,
-    color: COLORS.text,
-    opacity: 0.35,
+    color: COLORS.textSecondary,
+    opacity: 0.6,
   },
 });

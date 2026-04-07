@@ -43,6 +43,10 @@ export type TapeSide = {
   label: 'A' | 'B';
   tracks: Track[]; // ordered source-of-truth; timeline is derived from this
   timeline: TimelineItem[]; // rebuilt whenever tracks or noiseGap changes
+  // Per-noise durations overriding noiseGap.
+  // Side A: [0]=initial noise, [1]=gap after track[0], [2]=gap after track[1], ...
+  // Side B: [0]=gap after track[0], [1]=gap after track[1], ...
+  noiseDurations?: number[];
 };
 
 // ─── Tape ─────────────────────────────────────────────────────────────────────
