@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "node node_modules/expo/bin/cli start",
+    "android": "node node_modules/expo/bin/cli run:android",
+    "android:start": "node node_modules/expo/bin/cli start --clear",
+    "ios": "node node_modules/expo/bin/cli run:ios",
+    "web": "node node_modules/expo/bin/cli start --web"
   },
   "dependencies": {
     "expo": "~54.0.33",
