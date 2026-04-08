@@ -54,29 +54,32 @@ type Props = {
 };
 
 export function PlayerControls({ isPlaying, isInteractionBlocked, isSideEnded, onPlay, onPause, onSeekNext, onSeekPrev }: Props) {
-  const mainDisabled = isInteractionBlocked || isSideEnded;
+  // Play/pause is only disabled when the side has ended — noise doesn't block it.
+  const playDisabled = isSideEnded;
+  // Seek buttons are blocked during noise segments AND when side ended.
+  const seekDisabled = isInteractionBlocked || isSideEnded;
 
   return (
-    <View style={[styles.bar, mainDisabled && styles.barDisabled]}>
+    <View style={styles.bar}>
       {/* REW — long press only */}
-      <PressableButton onLongPress={onSeekPrev} disabled={mainDisabled} style={styles.sideBtn}>
-        <Text style={[styles.sideBtnText, mainDisabled && styles.textDisabled]}>{'|◀◀'}</Text>
+      <PressableButton onLongPress={onSeekPrev} disabled={seekDisabled} style={[styles.sideBtn, seekDisabled && styles.sideBtnDisabled]}>
+        <Text style={[styles.sideBtnText, seekDisabled && styles.textDisabled]}>{'⏮'}</Text>
       </PressableButton>
 
-      {/* PLAY / PAUSE */}
+      {/* PLAY / PAUSE — oval pill button */}
       <PressableButton
         onPress={isPlaying ? onPause : onPlay}
-        disabled={mainDisabled}
-        style={[styles.playBtn, mainDisabled && styles.playBtnDisabled]}
+        disabled={playDisabled}
+        style={[styles.playBtn, playDisabled && styles.playBtnDisabled]}
       >
-        <Text style={[styles.playBtnText, mainDisabled && styles.textDisabled]}>
+        <Text style={[styles.playBtnText, playDisabled && styles.textDisabled]}>
           {isPlaying ? '⏸' : '▶'}
         </Text>
       </PressableButton>
 
       {/* FF — long press only */}
-      <PressableButton onLongPress={onSeekNext} disabled={mainDisabled} style={styles.sideBtn}>
-        <Text style={[styles.sideBtnText, mainDisabled && styles.textDisabled]}>{'▶▶|'}</Text>
+      <PressableButton onLongPress={onSeekNext} disabled={seekDisabled} style={[styles.sideBtn, seekDisabled && styles.sideBtnDisabled]}>
+        <Text style={[styles.sideBtnText, seekDisabled && styles.textDisabled]}>{'⏭'}</Text>
       </PressableButton>
     </View>
   );
@@ -91,52 +94,56 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#EDE5D8',
     borderRadius: 50,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: SPACING.lg,
-    shadowColor: '#5A4A3A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: '#3A2A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
     width: '100%',
   },
-  barDisabled: {
-    opacity: 0.5,
-  },
 
+  // Side skip buttons
   sideBtn: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D8CFBF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideBtnDisabled: {
+    opacity: 0.4,
   },
   sideBtnText: {
-    fontSize: FONT.sizeSm,
-    fontWeight: FONT.weightBold,
+    fontSize: 18,
     color: COLORS.text,
-    letterSpacing: 1,
   },
 
+  // Oval / pill play button (wider than tall)
   playBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 130,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
   },
   playBtnDisabled: {
     backgroundColor: '#C8B8A0',
     shadowOpacity: 0,
   },
   playBtnText: {
-    fontSize: 22,
+    fontSize: 26,
     color: '#fff',
-    marginLeft: 2,
+    marginLeft: 3,
   },
 
-  textDisabled: { opacity: 0.5 },
+  textDisabled: { opacity: 0.4 },
 });

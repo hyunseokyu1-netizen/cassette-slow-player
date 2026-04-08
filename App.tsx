@@ -3,30 +3,12 @@ import React, { useState } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { PlayerScreen } from './src/screens/PlayerScreen';
 import { TapeBuilderScreen } from './src/screens/TapeBuilderScreen';
-import { createTape, buildTimeline } from './src/engine/timeline';
-import { Tape, Track } from './src/types/tape';
+import { createTape } from './src/engine/timeline';
+import { Tape } from './src/types/tape';
 import { COLORS, FONT, SPACING } from './src/constants/theme';
 
-// ─── Demo tape ────────────────────────────────────────────────────────────────
-//
-// Replace uri fields with real audio file paths to enable playback.
-
-const DEMO_TRACKS_A: Track[] = [
-  { id: 'a1', title: '봄날', artist: 'BTS', uri: '', duration: 255 },
-  { id: 'a2', title: 'Blueming', artist: 'IU', uri: '', duration: 214 },
-  { id: 'a3', title: 'Celebrity', artist: 'IU', uri: '', duration: 193 },
-];
-
-const DEMO_TRACKS_B: Track[] = [
-  { id: 'b1', title: 'Feel Special', artist: 'TWICE', uri: '', duration: 213 },
-  { id: 'b2', title: 'Eight', artist: 'IU feat. Suga', uri: '', duration: 200 },
-];
-
-function makeDemoTape(): Tape {
-  const t = createTape('demo-001', '봄 플레이리스트');
-  t.A = { label: 'A', tracks: DEMO_TRACKS_A, timeline: buildTimeline('A', DEMO_TRACKS_A, t.noiseGap) };
-  t.B = { label: 'B', tracks: DEMO_TRACKS_B, timeline: buildTimeline('B', DEMO_TRACKS_B, t.noiseGap) };
-  return t;
+function makeEmptyTape(): Tape {
+  return createTape('tape-001', 'My Mixtape');
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -35,7 +17,7 @@ type Screen = 'player' | 'builder';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('player');
-  const [tape, setTape] = useState<Tape>(makeDemoTape);
+  const [tape, setTape] = useState<Tape>(makeEmptyTape);
 
   return (
     <View style={styles.root}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, Animated, Easing, Pressable, Platform, StatusBar } from 'react-native';
+import { View, Text, SafeAreaView, StyleSheet, Animated, Easing, Pressable, Platform, StatusBar, ScrollView } from 'react-native';
 import { Cassette } from '../components/Cassette';
 import { PlayerControls } from '../components/PlayerControls';
 import { useCassetteEngine } from '../hooks/useCassetteEngine';
@@ -15,6 +15,31 @@ function formatTime(seconds: number): string {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
+// ─── PaperGrain ───────────────────────────────────────────────────────────────
+// Subtle horizontal lines that simulate warm paper/plastic texture.
+
+function PaperGrain() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {Array.from({ length: 48 }).map((_, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            top: i * 18,
+            left: 0,
+            right: 0,
+            height: 1,
+            backgroundColor: i % 3 === 0
+              ? 'rgba(100,65,30,0.045)'
+              : 'rgba(255,240,210,0.04)',
+          }}
+        />
+      ))}
+    </View>
+  );
 }
 
 // ─── PlayerScreen ─────────────────────────────────────────────────────────────
@@ -83,6 +108,8 @@ export function PlayerScreen({ tape }: Props) {
 
   return (
     <SafeAreaView style={[styles.safe, { paddingTop: statusBarHeight }]}>
+      {/* Paper texture grain overlay */}
+      <PaperGrain />
       <View style={styles.screen}>
 
         {/* ── Tape header (outside card) ───────────────────────────────── */}
@@ -200,17 +227,19 @@ const styles = StyleSheet.create({
   // ── Card ───────────────────────────────────────────────────────────────────
   card: {
     width: '100%',
-    backgroundColor: '#EDE8DF',
-    borderRadius: 28,
+    backgroundColor: COLORS.card,
+    borderRadius: 32,
     padding: SPACING.md,
     paddingBottom: SPACING.lg,
     gap: SPACING.md,
     alignItems: 'center',
-    shadowColor: '#4A3A2A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowColor: '#3A2510',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(180,140,90,0.18)',
   },
 
   // ── Controls row ───────────────────────────────────────────────────────────

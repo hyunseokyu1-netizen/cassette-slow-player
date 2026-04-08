@@ -1,66 +1,77 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { COLORS, SHADOW } from '../constants/theme';
 import { SIDE_DURATION } from '../types/tape';
 
-// ─── Cassette dimensions ──────────────────────────────────────────────────────
+// ─── Dimensions ───────────────────────────────────────────────────────────────
 
-const BODY_W = 300;
-const BODY_H = 192;
+const BODY_W = 310;
+const BODY_H = 200;
 
-const LABEL_LEFT = 26;
-const LABEL_TOP = 18;
-const LABEL_W = BODY_W - LABEL_LEFT * 2;   // 248
-const LABEL_H = 36;
+// Label sits at the top inside the body
+const LABEL_MX = 22;
+const LABEL_TOP = 14;
+const LABEL_W = BODY_W - LABEL_MX * 2;
+const LABEL_H = 38;
 
-const WINDOW_W = 218;
-const WINDOW_H = 84;
-const WINDOW_LEFT = (BODY_W - WINDOW_W) / 2; // 41
-const WINDOW_TOP = 60;
+// Window is the large dark oval cutout
+const WIN_MX = 18;
+const WIN_TOP = 60;
+const WIN_W = BODY_W - WIN_MX * 2;
+const WIN_H = 100;
 
-const LEFT_REEL_CX = 54;
-const RIGHT_REEL_CX = 164;
-const REEL_CY = 38;
+// Reel centers relative to window origin
+const L_CX = 74;
+const R_CX = WIN_W - 74;
+const REEL_CY = WIN_H / 2 - 6;
 
-const MAX_REEL_R = 31;
-const MIN_REEL_R = 13;
-const HUB_R = 7;
-const SPOKE_W = 2;
-const SPOKE_L = MAX_REEL_R - HUB_R - 3;
+const MAX_R = 36;
+const MIN_R = 14;
+const HUB_R = 8;
+const SPOKE_W = 2.5;
+const SPOKE_L = MAX_R - HUB_R - 4;
 
-const LEFT_REEL_RPM_MS = 2800;
-const RIGHT_REEL_RPM_MS = 2200;
-
-// Indicator dots (top-center of cassette)
-const DOT_COLORS = ['#F28C28', '#C8A864', '#7AAA80'];
-const DOT_SIZE = 5;
+const L_RPM_MS = 2600;
+const R_RPM_MS = 2000;
 
 // ─── Reel ─────────────────────────────────────────────────────────────────────
 
 type ReelProps = {
   cx: number;
-  fillProg: Animated.Value | Animated.AnimatedInterpolation<number>;
+  fillProg: Animated.AnimatedInterpolation<number>;
   rotation: Animated.Value;
 };
 
 function Reel({ cx, fillProg, rotation }: ReelProps) {
-  const r = (fillProg as Animated.Value).interpolate
-    ? (fillProg as any).interpolate({ inputRange: [0, 1], outputRange: [MIN_REEL_R, MAX_REEL_R] })
-    : fillProg;
-
-  const left = r.interpolate({ inputRange: [MIN_REEL_R, MAX_REEL_R], outputRange: [cx - MIN_REEL_R, cx - MAX_REEL_R] });
-  const top = r.interpolate({ inputRange: [MIN_REEL_R, MAX_REEL_R], outputRange: [REEL_CY - MIN_REEL_R, REEL_CY - MAX_REEL_R] });
-  const size = r.interpolate({ inputRange: [MIN_REEL_R, MAX_REEL_R], outputRange: [MIN_REEL_R * 2, MAX_REEL_R * 2] });
-  const rotStr = rotation.interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'], extrapolate: 'extend' });
+  const r = fillProg.interpolate({ inputRange: [0, 1], outputRange: [MIN_R, MAX_R] });
+  const half = r.interpolate({ inputRange: [MIN_R, MAX_R], outputRange: [MIN_R, MAX_R] });
+  const left = r.interpolate({ inputRange: [MIN_R, MAX_R], outputRange: [cx - MIN_R, cx - MAX_R] });
+  const top = r.interpolate({
+    inputRange: [MIN_R, MAX_R],
+    outputRange: [REEL_CY - MIN_R, REEL_CY - MAX_R],
+  });
+  const size = r.interpolate({ inputRange: [MIN_R, MAX_R], outputRange: [MIN_R * 2, MAX_R * 2] });
+  const rotStr = rotation.interpolate({
+    inputRange: [0, 360],
+    outputRange: ['0deg', '360deg'],
+    extrapolate: 'extend',
+  });
 
   return (
     <Animated.View
       style={[
         styles.reelOuter,
-        { position: 'absolute', left, top, width: size, height: size, borderRadius: r, transform: [{ rotate: rotStr }] },
+        {
+          position: 'absolute',
+          left,
+          top,
+          width: size,
+          height: size,
+          borderRadius: half,
+          transform: [{ rotate: rotStr }],
+        },
       ]}
     >
-      {/* 6 spokes */}
+      {/* 6 spokes radiating from center */}
       {[0, 30, 60, 90, 120, 150].map((deg) => (
         <View key={deg} style={[styles.spoke, { transform: [{ rotate: `${deg}deg` }] }]} />
       ))}
@@ -80,23 +91,18 @@ type Props = {
 
 export function Cassette({ currentTime, isPlaying, tapeTitle, side }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
-  const leftRotation = useRef(new Animated.Value(0)).current;
-  const rightRotation = useRef(new Animated.Value(0)).current;
-
+  const leftRot = useRef(new Animated.Value(0)).current;
+  const rightRot = useRef(new Animated.Value(0)).current;
   const leftRotRef = useRef(0);
   const rightRotRef = useRef(0);
 
-  // Track rotation values continuously
   useEffect(() => {
-    const lid = leftRotation.addListener(({ value }) => { leftRotRef.current = value; });
-    const rid = rightRotation.addListener(({ value }) => { rightRotRef.current = value; });
-    return () => {
-      leftRotation.removeListener(lid);
-      rightRotation.removeListener(rid);
-    };
+    const l = leftRot.addListener(({ value }) => { leftRotRef.current = value; });
+    const r = rightRot.addListener(({ value }) => { rightRotRef.current = value; });
+    return () => { leftRot.removeListener(l); rightRot.removeListener(r); };
   }, []);
 
-  // Size animation
+  // Progress (reel fill)
   useEffect(() => {
     Animated.timing(progress, {
       toValue: currentTime / SIDE_DURATION,
@@ -106,241 +112,305 @@ export function Cassette({ currentTime, isPlaying, tapeTitle, side }: Props) {
     }).start();
   }, [currentTime]);
 
-  // Rotation animation
+  // Reel rotation
   useEffect(() => {
     if (isPlaying) {
       let active = true;
-      const spinOne = (val: Animated.Value, ref: React.MutableRefObject<number>, rpm: number) => {
+      const spin = (val: Animated.Value, ref: React.MutableRefObject<number>, ms: number) => {
         if (!active) return;
         Animated.timing(val, {
           toValue: ref.current + 360,
-          duration: rpm,
+          duration: ms,
           easing: Easing.linear,
           useNativeDriver: false,
-        }).start(({ finished }) => { if (finished && active) spinOne(val, ref, rpm); });
+        }).start(({ finished }) => { if (finished && active) spin(val, ref, ms); });
       };
-      spinOne(leftRotation, leftRotRef, LEFT_REEL_RPM_MS);
-      spinOne(rightRotation, rightRotRef, RIGHT_REEL_RPM_MS);
+      spin(leftRot, leftRotRef, L_RPM_MS);
+      spin(rightRot, rightRotRef, R_RPM_MS);
       return () => {
         active = false;
-        leftRotation.stopAnimation();
-        rightRotation.stopAnimation();
+        leftRot.stopAnimation();
+        rightRot.stopAnimation();
       };
     } else {
-      const leftStop = Math.ceil(leftRotRef.current / 90) * 90;
-      const rightStop = Math.ceil(rightRotRef.current / 90) * 90;
-      Animated.timing(leftRotation, { toValue: leftStop, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-      Animated.timing(rightRotation, { toValue: rightStop, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+      const ls = Math.ceil(leftRotRef.current / 90) * 90;
+      const rs = Math.ceil(rightRotRef.current / 90) * 90;
+      Animated.timing(leftRot, { toValue: ls, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+      Animated.timing(rightRot, { toValue: rs, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
     }
   }, [isPlaying]);
 
-  // Left reel: supply (starts full, shrinks)
   const leftFill = progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  // Right reel: take-up (starts empty, grows)
-  const rightFill = progress;
+  const rightFill = progress.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
-  // Truncate long title for label
-  const displayTitle = tapeTitle.length > 14 ? tapeTitle.slice(0, 13) + '…' : tapeTitle.toUpperCase();
+  const displayTitle = tapeTitle.length > 12 ? tapeTitle.slice(0, 11) + '…' : tapeTitle.toUpperCase();
 
   return (
     <View style={styles.body}>
-      {/* ── Corner screws ──────────────────────────────────────────────── */}
-      <View style={[styles.screw, styles.screwTL]} />
-      <View style={[styles.screw, styles.screwTR]} />
-      <View style={[styles.screw, styles.screwBL]} />
-      <View style={[styles.screw, styles.screwBR]} />
+      {/* ── Corner screws ─────────────────────────────────────────────────── */}
+      {[styles.sTL, styles.sTR, styles.sBL, styles.sBR].map((pos, i) => (
+        <View key={i} style={[styles.screw, pos]}>
+          <View style={styles.screwSlot} />
+        </View>
+      ))}
 
-      {/* ── Top indicator dots ────────────────────────────────────────── */}
+      {/* ── Indicator dots (top center) ──────────────────────────────────── */}
       <View style={styles.dotsRow}>
-        {DOT_COLORS.map((color, i) => (
-          <View key={i} style={[styles.dot, { backgroundColor: color }]} />
-        ))}
+        <View style={[styles.dot, { backgroundColor: '#F28C28' }]} />
+        <View style={[styles.dot, { backgroundColor: '#D4A444' }]} />
+        <View style={[styles.dot, { backgroundColor: '#7AAA80' }]} />
       </View>
 
-      {/* ── Label sticker ─────────────────────────────────────────────── */}
+      {/* ── Label sticker ─────────────────────────────────────────────────── */}
       <View style={styles.label}>
+        {/* Ruled paper lines (behind content) */}
+        {[8, 16, 24].map((t) => (
+          <View key={t} style={[styles.ruledLine, { top: t }]} />
+        ))}
         <Text style={styles.labelSide}>{side}</Text>
         <View style={styles.labelCenter}>
           <Text style={styles.labelTitle} numberOfLines={1}>{displayTitle}</Text>
-          <View style={styles.labelDivider} />
+          <View style={styles.labelLine} />
         </View>
         <Text style={styles.labelDuration}>90</Text>
       </View>
 
-      {/* ── Window (dark) ─────────────────────────────────────────────── */}
+      {/* ── Window ────────────────────────────────────────────────────────── */}
       <View style={styles.window}>
-        {/* Tape path */}
-        <View style={styles.tapePath} />
+        {/* Tape strand (bottom of window) */}
+        <View style={styles.tapeStrand} />
 
         {/* Reels */}
-        <Reel cx={LEFT_REEL_CX} fillProg={leftFill} rotation={leftRotation} />
-        <Reel cx={RIGHT_REEL_CX} fillProg={rightFill} rotation={rightRotation} />
+        <Reel cx={L_CX} fillProg={leftFill} rotation={leftRot} />
+        <Reel cx={R_CX} fillProg={rightFill} rotation={rightRot} />
 
-        {/* STEREO / NR label */}
-        <View style={styles.windowLabels}>
-          <Text style={styles.windowLabelText}>STEREO ●</Text>
-          <Text style={styles.windowLabelText}>NR4C</Text>
+        {/* Small text labels */}
+        <View style={styles.winFooter}>
+          <Text style={styles.winText}>STEREO ●</Text>
+          <Text style={styles.winText}>NR4C</Text>
         </View>
       </View>
 
-      {/* ── Bottom slot ───────────────────────────────────────────────── */}
+      {/* ── Bottom center slot (play mechanism notch) ─────────────────────── */}
       <View style={styles.bottomSlot} />
+
+      {/* ── Bottom screw row ──────────────────────────────────────────────── */}
+      <View style={styles.bottomScrewRow}>
+        {[0,1,2,3,4].map((i) => (
+          <View key={i} style={styles.bottomHole} />
+        ))}
+      </View>
     </View>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
+const BODY_COLOR = '#1A1108';        // very dark chocolate brown
+const BODY_ACCENT = '#2A1E10';       // slightly lighter for depth
+const LABEL_COLOR = '#EEE4D0';       // warm cream paper
+const LABEL_LINE = '#C8B898';
+const WIN_COLOR = '#0C0806';         // near-black window
+const REEL_COLOR = '#9C9088';        // warm silver-gray
+const REEL_RING = '#C4B8A4';         // chrome rim
+const HUB_COLOR = '#141008';
+const SPOKE_COLOR = 'rgba(220,205,185,0.5)';
+const TAPE_COLOR = '#7A5828';        // amber brown magnetic tape
+
 const styles = StyleSheet.create({
   body: {
     width: BODY_W,
     height: BODY_H,
-    backgroundColor: COLORS.cassetteBody,
-    borderRadius: 12,
-    ...SHADOW.cassette,
+    backgroundColor: BODY_COLOR,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: '#383028',
   },
 
   // ── Screws ─────────────────────────────────────────────────────────────────
   screw: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#443830',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: BODY_ACCENT,
     borderWidth: 1,
-    borderColor: '#5A4A40',
+    borderColor: '#504030',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  screwTL: { top: 8, left: 10 },
-  screwTR: { top: 8, right: 10 },
-  screwBL: { bottom: 8, left: 10 },
-  screwBR: { bottom: 8, right: 10 },
+  screwSlot: {
+    width: 5,
+    height: 1,
+    backgroundColor: '#706050',
+  },
+  sTL: { top: 9, left: 11 },
+  sTR: { top: 9, right: 11 },
+  sBL: { bottom: 18, left: 11 },
+  sBR: { bottom: 18, right: 11 },
 
   // ── Dots ───────────────────────────────────────────────────────────────────
   dotsRow: {
     position: 'absolute',
-    top: 9,
-    left: BODY_W / 2 - (DOT_COLORS.length * (DOT_SIZE + 5) - 5) / 2,
+    top: 10,
+    alignSelf: 'center',
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
   },
   dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 
-  // ── Label sticker ──────────────────────────────────────────────────────────
+  // ── Label ──────────────────────────────────────────────────────────────────
   label: {
     position: 'absolute',
-    left: LABEL_LEFT,
+    left: LABEL_MX,
     top: LABEL_TOP,
     width: LABEL_W,
     height: LABEL_H,
-    backgroundColor: COLORS.cassetteLabel,
-    borderRadius: 5,
+    backgroundColor: LABEL_COLOR,
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
   labelSide: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#3A2E2A',
+    color: '#2A2018',
     letterSpacing: -0.5,
   },
   labelCenter: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   labelTitle: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#3A2E2A',
-    letterSpacing: 1.5,
+    color: '#2A2018',
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
-  labelDivider: {
-    width: '80%',
+  labelLine: {
+    width: '85%',
     height: 1,
-    backgroundColor: COLORS.cassetteLabelLine,
+    backgroundColor: LABEL_LINE,
+  },
+  ruledLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 0.8,
+    backgroundColor: 'rgba(110,75,40,0.1)',
   },
   labelDuration: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#3A2E2A',
-    opacity: 0.6,
+    color: '#2A2018',
+    opacity: 0.55,
   },
 
   // ── Window ─────────────────────────────────────────────────────────────────
   window: {
     position: 'absolute',
-    left: WINDOW_LEFT,
-    top: WINDOW_TOP,
-    width: WINDOW_W,
-    height: WINDOW_H,
-    backgroundColor: COLORS.cassetteWindow,
-    borderRadius: 5,
+    left: WIN_MX,
+    top: WIN_TOP,
+    width: WIN_W,
+    height: WIN_H,
+    backgroundColor: WIN_COLOR,
+    borderRadius: 8,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#3A3028',
+    borderWidth: 1.5,
+    borderColor: '#383028',
   },
-  tapePath: {
+  tapeStrand: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 16,
-    height: 4,
-    backgroundColor: COLORS.cassetteTape,
+    bottom: 18,
+    height: 5,
+    backgroundColor: TAPE_COLOR,
   },
-  windowLabels: {
+  winFooter: {
     position: 'absolute',
-    bottom: 4,
-    left: 8,
-    right: 8,
+    bottom: 5,
+    left: 10,
+    right: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  windowLabelText: {
+  winText: {
     fontSize: 7,
-    color: 'rgba(255,255,255,0.25)',
+    color: 'rgba(255,255,255,0.2)',
     letterSpacing: 0.5,
     fontWeight: '600',
   },
 
   // ── Reel ───────────────────────────────────────────────────────────────────
   reelOuter: {
-    backgroundColor: COLORS.cassetteReel,
+    backgroundColor: REEL_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.cassetteReelRing,
+    borderWidth: 2,
+    borderColor: REEL_RING,
   },
   spoke: {
     position: 'absolute',
     width: SPOKE_W,
     height: SPOKE_L,
-    backgroundColor: 'rgba(220,210,200,0.35)',
+    backgroundColor: SPOKE_COLOR,
     borderRadius: 1,
   },
   hub: {
     width: HUB_R * 2,
     height: HUB_R * 2,
     borderRadius: HUB_R,
-    backgroundColor: COLORS.cassetteHub,
-    borderWidth: 1,
-    borderColor: '#3A3028',
+    backgroundColor: HUB_COLOR,
+    borderWidth: 1.5,
+    borderColor: '#383028',
   },
 
-  // ── Bottom slot ────────────────────────────────────────────────────────────
+  // ── Bottom ─────────────────────────────────────────────────────────────────
   bottomSlot: {
     position: 'absolute',
-    bottom: 12,
+    bottom: 20,
     alignSelf: 'center',
-    width: 76,
-    height: 7,
-    backgroundColor: '#443830',
+    width: 80,
+    height: 8,
+    backgroundColor: '#161008',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#383028',
+  },
+  bottomScrewRow: {
+    position: 'absolute',
+    bottom: 6,
+    left: 30,
+    right: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bottomHole: {
+    width: 6,
+    height: 6,
     borderRadius: 3,
+    backgroundColor: '#0E0A06',
+    borderWidth: 1,
+    borderColor: '#383028',
   },
 });

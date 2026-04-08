@@ -5,20 +5,19 @@ import {
   SafeAreaView,
   ScrollView,
   Pressable,
-  Modal,
-  TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { Audio } from 'expo-av';
 import { NoiseRow, TapeFillRow } from '../components/NoiseRow';
 import { TrackRow } from '../components/TrackRow';
 import { useTape } from '../hooks/useTape';
 import { Tape, Track, SIDE_DURATION } from '../types/tape';
 import { getRemainingTime } from '../engine/timeline';
-import { isTrackItem } from '../engine/getCurrentItem';
 import { COLORS, FONT, SPACING, RADIUS } from '../constants/theme';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,77 +34,6 @@ function formatRemaining(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')} remaining`;
 }
 
-// ─── AddTrackModal ────────────────────────────────────────────────────────────
-
-type AddTrackModalProps = {
-  visible: boolean;
-  remainingSeconds: number;
-  onAdd: (track: Omit<Track, 'id'>) => void;
-  onClose: () => void;
-};
-
-function AddTrackModal({ visible, remainingSeconds, onAdd, onClose }: AddTrackModalProps) {
-  const [title, setTitle] = useState('');
-  const [artist, setArtist] = useState('');
-  const [durationText, setDurationText] = useState('');
-
-  const reset = () => { setTitle(''); setArtist(''); setDurationText(''); };
-
-  const handleAdd = () => {
-    const duration = parseFloat(durationText);
-    if (!title.trim()) { Alert.alert('제목을 입력해주세요'); return; }
-    if (!duration || duration <= 0) { Alert.alert('재생 시간을 초 단위로 입력해주세요 (예: 214)'); return; }
-    if (duration > remainingSeconds) {
-      Alert.alert('곡이 너무 깁니다', `이 면에 ${Math.floor(remainingSeconds)}초만 남았습니다.`);
-      return;
-    }
-    onAdd({ title: title.trim(), artist: artist.trim(), uri: '', duration });
-    reset();
-    onClose();
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.modalCard}>
-          <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>ADD TRACK</Text>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>TITLE</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle}
-              placeholder="트랙 제목" placeholderTextColor={COLORS.textSecondary + '80'} autoCapitalize="words" />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>ARTIST</Text>
-            <TextInput style={styles.input} value={artist} onChangeText={setArtist}
-              placeholder="아티스트" placeholderTextColor={COLORS.textSecondary + '80'} autoCapitalize="words" />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>DURATION (초)</Text>
-            <TextInput style={styles.input} value={durationText} onChangeText={setDurationText}
-              placeholder={`최대 ${Math.floor(remainingSeconds)}초`}
-              placeholderTextColor={COLORS.textSecondary + '80'} keyboardType="numeric" />
-          </View>
-
-          <View style={styles.modalActions}>
-            <Pressable style={styles.cancelBtn} onPress={() => { reset(); onClose(); }}>
-              <Text style={styles.cancelBtnText}>취소</Text>
-            </Pressable>
-            <Pressable style={styles.addBtn} onPress={handleAdd}>
-              <Text style={styles.addBtnText}>추가</Text>
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
 
 // ─── SideContent ──────────────────────────────────────────────────────────────
 //
@@ -121,12 +49,48 @@ type SideContentProps = {
 };
 
 function SideContent({ sideLabel, tape, onDelete, onReorder, onNoiseEdit, onAdd }: SideContentProps) {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
   const tracks = tape[sideLabel].tracks;
   const timeline = tape[sideLabel].timeline;
   const remaining = getRemainingTime(sideLabel, tracks, tape.noiseGap);
   const usedSeconds = SIDE_DURATION - remaining;
   const usedPercent = Math.min(100, Math.round((usedSeconds / SIDE_DURATION) * 100));
+
+  // ── File picker ────────────────────────────────────────────────────────────
+  const handlePickFile = async () => {
+    if (remaining <= 0) return;
+    setPicking(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      // Detect duration via expo-av
+      let duration = 0;
+      try {
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri: asset.uri },
+          { shouldPlay: false },
+        );
+        if (status.isLoaded && status.durationMillis) {
+          duration = status.durationMillis / 1000;
+        }
+        await sound.unloadAsync();
+      } catch {
+        // duration stays 0
+      }
+
+      const title = (asset.name ?? 'track').replace(/\.[^/.]+$/, '');
+      onAdd(sideLabel, { title, artist: '', uri: asset.uri, duration });
+    } catch {
+      Alert.alert('파일 선택 실패', '오디오 파일을 선택할 수 없었습니다.');
+    } finally {
+      setPicking(false);
+    }
+  };
 
   // Map timeline items to display rows.
   // Track count used to resolve ↑↓ moves.
@@ -191,20 +155,19 @@ function SideContent({ sideLabel, tape, onDelete, onReorder, onNoiseEdit, onAdd 
 
       {/* ── Add button ────────────────────────────────────────────────────── */}
       <Pressable
-        style={[styles.addAudioBtn, remaining <= 0 && styles.addAudioBtnDisabled]}
-        onPress={() => remaining > 0 && setModalOpen(true)}
+        style={[styles.addAudioBtn, (remaining <= 0 || picking) && styles.addAudioBtnDisabled]}
+        onPress={handlePickFile}
+        disabled={remaining <= 0 || picking}
       >
-        <Text style={[styles.addAudioText, remaining <= 0 && styles.addAudioTextDisabled]}>
-          + Add Audio Files
-        </Text>
+        {picking ? (
+          <ActivityIndicator size="small" color={COLORS.primary} />
+        ) : (
+          <Text style={[styles.addAudioText, remaining <= 0 && styles.addAudioTextDisabled]}>
+            + Add Audio Files
+          </Text>
+        )}
       </Pressable>
 
-      <AddTrackModal
-        visible={modalOpen}
-        remainingSeconds={remaining}
-        onAdd={(t) => onAdd(sideLabel, t)}
-        onClose={() => setModalOpen(false)}
-      />
     </View>
   );
 }
@@ -498,6 +461,19 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.secondary,
+  },
+  durationBadge: {
+    alignSelf: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  durationBadgeText: {
+    fontSize: FONT.sizeSm,
+    fontWeight: FONT.weightBold,
+    color: COLORS.text,
+    letterSpacing: 0.5,
   },
   modalActions: {
     flexDirection: 'row',

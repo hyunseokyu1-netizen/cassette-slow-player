@@ -1,14 +1,14 @@
 // ─── Colors (design.md) ──────────────────────────────────────────────────────
 
 export const COLORS = {
-  background: '#F5F1EA',
+  background: '#E8D5C0',
   primary: '#F28C28',
   primaryDark: '#E57A1F',
   text: '#3A2E2A',
   textSecondary: '#6B5B53',
   secondary: '#E8E1D9',
   progressTrack: '#DBC098',
-  card: '#F0EAE0',
+  card: '#F2E8D8',
 
   // Cassette body colors
   cassetteBody: '#2A2018',
